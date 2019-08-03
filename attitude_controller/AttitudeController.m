@@ -18,10 +18,10 @@ I_tru=I_est;
 
 % Scenario Definition
 Q0=[0 0 0 1];
-w0=[.1 .2 .1];
+w0=[.1 .2 .2];
 
 t0=0;
-tf=10;
+tf=100;
 
 % principal axes and MOIs
 [princ_axes_tru,princ_moms_tru]=eig(I_tru);
@@ -38,18 +38,32 @@ W=X(:,5:7)
 for i=1:size(X,1)
 	H(i,:)=W(i,:).*princ_moms_tru';
 	H_mag(i)=norm(H(i,:));
-	T(i)=1/2*W(i,:)*W(i,:)';
+	T(i)=1/2*W(i,:).*princ_moms_tru'*(W(i,:).*princ_moms_tru')';
 	end
 	
 max(H_mag)-min(H_mag)
+max(T)-min(T)
 
 figure()
-subplot(3,1,1)
+subplot(2,1,1)
 hold on
 plot(W)
-subplot(3,1,2)
+subplot(2,1,2)
 hold on
-%plot(H)
-plot(H_mag)
-subplot(3,1,3)
-plot(T)
+plot(H)
+%plot(H_mag)
+%subplot(3,1,3)
+%plot(T)
+
+
+
+
+
+
+
+
+
+
+
+
+
