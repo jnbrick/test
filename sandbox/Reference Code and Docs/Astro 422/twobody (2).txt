@@ -1,0 +1,609 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Author: Richard Phernetton
+%Date: 10 January 2015
+%
+% This function validates a numerical method of orbit propagation by
+% propagating an orbit for key lengths of time and outputs a report.
+%
+% Input Variables:
+%   
+%    a                  Semimajor axis (initial)             (km)
+%
+%    e                  Eccentricity (initial)               (none)
+%
+%    inc                Inclination (initial)                (deg)
+%
+%    raan               Right ascension of the ascending     (deg)
+%                       node (initial)
+%
+%    argp               Argument of perigee (initial)        (deg)
+%
+%    nu                 True anomoly (initial)               (deg)
+%
+%    DateTime           UT date and time (initial)
+%                                    (CE year, month, day, hour, min, sec)
+%
+% Output Variables:     
+%
+%    R                  Satellite position vector (IJK)      (km; km; km)
+%
+%    V                  Satellite velocity vector (IJK)      (km; km; km)
+%
+%
+% Usage  
+%   
+%   twobody(a,e,inc,raan,argp,nu,DateTime)
+%   
+% Globals:
+%
+%   wgs84data           World Geodetic System 1984 Data
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function twobody(a,e,inc,raan,argp,nu,DateTime);
+tic
+
+%Call Globals
+
+global wgs84data
+global MU
+
+%Set Step Size (s)
+
+stepsize = 5;
+
+%Calculate Orbital Period
+
+per = 2*pi*sqrt(a^3/MU);
+
+%Set time of flight for each orbital case
+
+tofa = per/4;   %Case A: Forward 1/4th orbit
+tofb = per;     %Case B: Forward one orbit
+tofc = -per/4;  %Case C: Backward 1/4th orbit
+tofd = -per;    %Case D: Backward one orbit
+    
+%Find Julian Date (days)
+
+jd=julianday(DateTime(1),DateTime(2),DateTime(3),DateTime(4),...
+   DateTime(5),DateTime(6));
+
+%Find Initial R and V vectors
+    
+    %From COEs to PQW frame
+    
+    [Rpqw_i, Vpqw_i] = RVpqw(a, e, deg2rad(nu));
+    
+    %From PQW frame to IJK frame
+    
+    [R_i,V_i] = RVijk(Rpqw_i,Vpqw_i,...
+        deg2rad(inc), deg2rad(raan), deg2rad(argp));
+  
+%%
+%Kepler Propagation
+    
+    %Case AK (A, Kepler Propagation)
+
+        %Find final COEs with Kepler propagation
+
+        [a_ak,e_ak,inc_ak,raan_ak,argp_ak,nu_ak] = ...
+            update(a,e,deg2rad(inc),...
+            deg2rad(raan),deg2rad(argp),deg2rad(nu),tofa);
+
+        %Convert to R and V vectors
+        
+            %From COEs to PQW frame
+
+            [Rpqw_ak, Vpqw_ak] = RVpqw(a_ak, e_ak, nu_ak);
+
+            %From PQW frame to IJK frame
+
+            [R_ak,V_ak] = ...
+                RVijk(Rpqw_ak,Vpqw_ak, inc_ak, raan_ak, argp_ak);
+
+    %Case BK (B, Kepler Propagation)
+
+        %Find final COEs with Kepler propagation
+
+        [a_bk,e_bk,inc_bk,raan_bk,argp_bk,nu_bk] = ...
+            update(a,e,deg2rad(inc),...
+            deg2rad(raan),deg2rad(argp),deg2rad(nu),tofb);
+
+        %Convert to R and V vectors
+
+            %From COEs to PQW frame
+
+            [Rpqw_bk, Vpqw_bk] = RVpqw(a_bk, e_bk, nu_bk);
+
+            %From PQW frame to IJK frame
+
+            [R_bk,V_bk] = ...
+                RVijk(Rpqw_bk,Vpqw_bk, inc_bk, raan_bk, argp_bk);      
+
+    %Case CK (C, Kepler Propagation)
+
+        %Find final COEs with Kepler propagation
+
+        [a_ck,e_ck,inc_ck,raan_ck,argp_ck,nu_ck] = ...
+            update(a,e,deg2rad(inc),deg2rad(raan),...
+            deg2rad(argp),deg2rad(nu),tofc);
+
+        %Convert to R and V vectors
+
+            %From COEs to PQW frame
+
+            [Rpqw_ck, Vpqw_ck] = RVpqw(a_ck, e_ck, nu_ck);
+
+            %From PQW frame to IJK frame
+
+            [R_ck,V_ck] = ...
+                RVijk(Rpqw_ck,Vpqw_ck, inc_ck, raan_ck, argp_ck);
+
+    %Case DK (D, Kepler Propagation)
+
+        %Find final COEs with Kepler propagation
+
+        [a_dk,e_dk,inc_dk,raan_dk,argp_dk,nu_dk] = ...
+            update(a,e,deg2rad(inc),deg2rad(raan),...
+            deg2rad(argp),deg2rad(nu),tofd);
+
+        %Convert to R and V vectors
+
+            %From COEs to PQW frame
+
+            [Rpqw_dk, Vpqw_dk] = RVpqw(a_dk, e_dk, nu_dk);
+
+            %From PQW frame to IJK frame
+
+            [R_dk,V_dk] = ...
+                RVijk(Rpqw_dk,Vpqw_dk, inc_dk, raan_dk, argp_dk);
+            
+%%
+%Numerical Propagation
+    
+    %Cases A and B (positive propagation)
+
+        %Set temporary values 
+
+        ttime = 0;  %Time (seconds)
+        timestep = stepsize;   %Time step
+        tR = R_i;   %Position
+        tV = V_i;   %Velocity
+        tdate = jd;     %Date (days)
+
+        %Case AN (A, Numerical Propagation)
+
+        while ttime < tofa -timestep;    
+
+            %Calculate next position and velocity
+
+            [tRtV] = rk4 ( tdate, timestep, 'nnnnnnnnn2', 0, [tR;tV] );
+
+            %Unpack rk4 output
+
+            tR = tRtV(1:3);
+            tV = tRtV(4:6);
+
+            %Update tdate, ttime
+
+            ttime = ttime + timestep; 
+            tdate = jd + (timestep/86400);
+
+        end
+        
+        %Cleanup
+        
+            %Calculate next position and velocity
+
+            [tRtV] = rk4 ( tdate, rem(tofa,timestep),...
+                'nnnnnnnnn2', 0, [tR;tV] );
+
+            %Unpack rk4 output
+
+            tR = tRtV(1:3);
+            tV = tRtV(4:6);        
+        
+        %Unpack R, V, and time
+
+        R_an = tR;
+        V_an = tV;
+        t_an = ttime + rem(tofa,timestep);
+        
+        %Covert to COEs
+        
+        [P,a_an,e_an,inc_an,raan_an,argp_an,...
+            nu_an,m_an,u_an,l_an,cappi_an] = elorb (R_an,V_an );
+        
+        %Case BN (B, Numerical Propagation)
+
+        while ttime < tofb - timestep;    
+
+            %Calculate next position and velocity
+
+            [tRtV] = rk4 ( tdate, timestep, 'nnnnnnnnn2', 0, [tR;tV] );
+
+            %Unpack rk4 output
+
+            tR = tRtV(1:3);
+            tV = tRtV(4:6);
+
+            %Update tdate, ttime
+
+            ttime = ttime + timestep; 
+            tdate = jd + (timestep/86400);
+
+        end
+        
+        %Cleanup
+        
+            %Calculate next position and velocity
+
+            [tRtV] = rk4 ( tdate, rem(tofb,timestep),...
+                'nnnnnnnnn2', 0, [tR;tV] );
+
+            %Unpack rk4 output
+
+            tR = tRtV(1:3);
+            tV = tRtV(4:6);        
+        
+
+        %Unpack R, V, and time
+
+        R_bn = tR;
+        V_bn = tV;
+        t_bn = ttime + rem(tofb,timestep);
+                
+        %Covert to COEs
+        
+        [P,a_bn,e_bn,inc_bn,raan_bn,argp_bn,...
+            nu_bn,m_bn,u_bn,l_bn,cappi_bn] = elorb (R_bn,V_bn );
+        
+        
+    %Cases C and D (negative propagation)
+
+        %Set temporary values 
+
+        ttime = 0;  %Time (seconds)
+        timestep = -stepsize;   %Time step
+        tR = R_i;   %Position
+        tV = V_i;   %Velocity
+        tdate = jd;     %Date (days)
+
+        %Case CN (C, Numerical Propagation)
+
+        while ttime > tofc - timestep;    
+
+            %Calculate next position and velocity
+
+            [tRtV] = rk4 ( tdate, timestep, 'nnnnnnnnn2', 0, [tR;tV] );
+
+            %Unpack rk4 output
+
+            tR = tRtV(1:3);
+            tV = tRtV(4:6);
+
+            %Update tdate, ttime
+ 
+            ttime = ttime + timestep; 
+            tdate = jd + (timestep/86400);
+
+        end
+        
+        %Cleanup
+        
+            %Calculate next position and velocity
+
+            [tRtV] = rk4 ( tdate, rem(tofc,timestep),...
+                'nnnnnnnnn2', 0, [tR;tV] );
+
+            %Unpack rk4 output
+
+            tR = tRtV(1:3);
+            tV = tRtV(4:6);        
+        
+
+        %Unpack R, V, and time
+
+        R_cn = tR;
+        V_cn = tV;
+        t_cn = ttime + rem(tofc,timestep);
+        
+        %Covert to COEs
+        
+        [P,a_cn,e_cn,inc_cn,raan_cn,argp_cn,...
+            nu_cn,m_cn,u_cn,l_cn,cappi_cn] = elorb (R_cn,V_cn );
+        
+        %Case DN (D, Numerical Propagation)
+
+        while ttime > tofd - timestep;    
+
+            %Calculate next position and velocity
+
+            [tRtV] = rk4 ( tdate, timestep, 'nnnnnnnnn2', 0, [tR;tV] );
+
+            %Unpack rk4 output
+
+            tR = tRtV(1:3);
+            tV = tRtV(4:6);
+
+            %Update tdate, ttime
+
+            ttime = ttime + timestep; 
+            tdate = jd + (timestep/86400);
+
+        end
+        
+        %Cleanup
+        
+            %Calculate next position and velocity
+
+            [tRtV] = rk4 ( tdate, rem(tofd,timestep),...
+                'nnnnnnnnn2', 0, [tR;tV] );
+
+            %Unpack rk4 output
+
+            tR = tRtV(1:3);
+            tV = tRtV(4:6);        
+        
+
+        %Unpack R, V, and time
+
+        R_dn = tR;
+        V_dn = tV;
+        t_dn = ttime + rem(tofd,timestep);
+        
+        %Covert to COEs
+        
+        [P,a_dn,e_dn,inc_dn,raan_dn,argp_dn,...
+            nu_dn,m_dn,u_dn,l_dn,cappi_dn] = elorb (R_dn,V_dn );
+        
+%%
+%Output
+FID = fopen('TwoBody.txt','w');
+
+fprintf(FID,'ASTRO 422 \r\n');
+fprintf(FID,'Two Body \r\n');
+fprintf(FID,'Richard Phernetton \r\n');
+
+fprintf(FID,'\r\n\r\nInputs\r\n');
+fprintf(FID,'**************************************');
+fprintf(FID,'*************************************\r\n');
+
+fprintf(FID,'Semimajor Axis:     % 12.4f   km\r\n',a);
+fprintf(FID,'Inclination:        % 12.4f   rad\r\n',deg2rad(inc));
+fprintf(FID,'                    % 12.4f   deg\r\n',inc);
+fprintf(FID,'Eccentricity:       % 12.4f   \r\n',e);
+fprintf(FID,'RAAN:               % 12.4f   rad\r\n',deg2rad(raan));
+fprintf(FID,'                    % 12.4f   deg\r\n',raan);
+fprintf(FID,'Argument of Perigee:% 12.4f   rad\r\n',deg2rad(argp));
+fprintf(FID,'                    % 12.4f   deg\r\n',argp);
+fprintf(FID,'True Anomoly:       % 12.4f   rad\r\n',deg2rad(nu));
+fprintf(FID,'                    % 12.4f   deg\r\n',nu);
+fprintf(FID,'Initial Position:   % 12.4f I km\r\n',R_i(1));
+fprintf(FID,'                    % 12.4f J km\r\n',R_i(2));
+fprintf(FID,'                    % 12.4f K km\r\n',R_i(3));
+fprintf(FID,'Initial Velocity:   % 12.4f I km/s\r\n',V_i(1));
+fprintf(FID,'                    % 12.4f J km/s\r\n',V_i(2));
+fprintf(FID,'                    % 12.4f K km/s\r\n',V_i(3));
+fprintf(FID,'Year:               % 12.0f     \r\n',DateTime(1));
+fprintf(FID,'Month:              % 12.0f     \r\n',DateTime(2));
+fprintf(FID,'Day:                % 12.0f     \r\n',DateTime(3));
+fprintf(FID,'Hour:               % 12.0f     \r\n',DateTime(4));
+fprintf(FID,'Minute:             % 12.0f     \r\n',DateTime(5));
+fprintf(FID,'Second:             % 12.4f     \r\n',DateTime(6));
+
+fprintf(FID,'\r\n\r\nPosition                   ');
+fprintf(FID,'Kepler       ');
+fprintf(FID,'Numerical      ');
+fprintf(FID,'Difference');
+fprintf(FID,'\r\n**************************************');
+fprintf(FID,'*************************************\r\n');
+
+fprintf(FID,...
+    '+1/4 Orbit          I:% 11.4f km  % 11.4f km  % 11.4f %%\r\n',...
+    R_ak(1),R_an(1),abs((R_ak(1)-R_an(1))/((R_ak(1)+R_an(1))/2))*100);
+fprintf(FID,...
+    '                    J:% 11.4f km  % 11.4f km  % 11.4f %%\r\n',...
+    R_ak(2),R_an(2),abs((R_ak(2)-R_an(2))/((R_ak(2)+R_an(2))/2))*100);
+fprintf(FID,...
+    '                    K:% 11.4f km  % 11.4f km  % 11.4f %%\r\n\r\n',...
+    R_ak(3),R_an(3),abs((R_ak(3)-R_an(3))/((R_ak(3)+R_an(3))/2))*100);
+
+fprintf(FID,...
+    '+1 Orbit            I:% 11.4f km  % 11.4f km  % 11.4f %%\r\n',...
+    R_bk(1),R_bn(1),abs((R_bk(1)-R_bn(1))/((R_bk(1)+R_bn(1))/2))*100);
+fprintf(FID,...
+    '                    J:% 11.4f km  % 11.4f km  % 11.4f %%\r\n',...
+    R_bk(2),R_bn(2),abs((R_bk(2)-R_bn(2))/((R_bk(2)+R_bn(2))/2))*100);
+fprintf(FID,...
+    '                    K:% 11.4f km  % 11.4f km  % 11.4f %%\r\n\r\n',...
+    R_bk(3),R_bn(3),abs((R_bk(3)-R_bn(3))/((R_bk(3)+R_bn(3))/2))*100);
+
+
+fprintf(FID,...
+    '-1/4 Orbit          I:% 11.4f km  % 11.4f km  % 11.4f %%\r\n',...
+    R_ck(1),R_cn(1),abs((R_ck(1)-R_cn(1))/((R_ck(1)+R_cn(1))/2))*100);
+fprintf(FID,...
+    '                    J:% 11.4f km  % 11.4f km  % 11.4f %%\r\n',...
+    R_ck(2),R_cn(2),abs((R_ck(2)-R_cn(2))/((R_ck(2)+R_cn(2))/2))*100);
+fprintf(FID,...
+    '                    K:% 11.4f km  % 11.4f km  % 11.4f %%\r\n\r\n',...
+    R_ck(3),R_cn(3),abs((R_ck(3)-R_cn(3))/((R_ck(3)+R_cn(3))/2))*100);
+
+fprintf(FID,...
+    '-1 Orbit            I:% 11.4f km  % 11.4f km  % 11.4f %%\r\n',...
+    R_dk(1),R_dn(1),abs((R_dk(1)-R_dn(1))/((R_dk(1)+R_dn(1))/2))*100);
+fprintf(FID,...
+    '                    J:% 11.4f km  % 11.4f km  % 11.4f %%\r\n',...
+    R_dk(2),R_dn(2),abs((R_dk(2)-R_dn(2))/((R_dk(2)+R_dn(2))/2))*100);
+fprintf(FID,...
+    '                    K:% 11.4f km  % 11.4f km  % 11.4f %%\r\n\r\n',...
+    R_dk(3),R_dn(3),abs((R_dk(3)-R_dn(3))/((R_dk(3)+R_dn(3))/2))*100);
+
+fprintf(FID,'\r\n\r\nVelocity                   ');
+fprintf(FID,'Kepler       ');
+fprintf(FID,'Numerical      ');
+fprintf(FID,'Difference');
+fprintf(FID,'\r\n**************************************');
+fprintf(FID,'*************************************\r\n');
+
+
+fprintf(FID,...
+    '+1/4 Orbit          I:% 11.4f km/s% 11.4f km/s% 11.4f %%\r\n',...
+    V_ak(1),V_an(1),abs((V_ak(1)-V_an(1))/((V_ak(1)+V_an(1))/2))*100);
+fprintf(FID,...
+    '                    J:% 11.4f km/s% 11.4f km/s% 11.4f %%\r\n',...
+    V_ak(2),V_an(2),abs((V_ak(2)-V_an(2))/((V_ak(2)+V_an(2))/2))*100);
+fprintf(FID,...
+    '                    K:% 11.4f km/s% 11.4f km/s% 11.4f %%\r\n\r\n',...
+    V_ak(3),V_an(3),abs((V_ak(3)-V_an(3))/((V_ak(3)+V_an(3))/2))*100);
+
+fprintf(FID,...
+    '+1 Orbit            I:% 11.4f km/s% 11.4f km/s% 11.4f %%\r\n',...
+    V_bk(1),V_bn(1),abs((V_bk(1)-V_bn(1))/((V_bk(1)+V_bn(1))/2))*100);
+fprintf(FID,...
+    '                    J:% 11.4f km/s% 11.4f km/s% 11.4f %%\r\n',...
+    V_bk(2),V_bn(2),abs((V_bk(2)-V_bn(2))/((V_bk(2)+V_bn(2))/2))*100);
+fprintf(FID,...
+    '                    K:% 11.4f km/s% 11.4f km/s% 11.4f %%\r\n\r\n',...
+    V_bk(3),V_bn(3),abs((V_bk(3)-V_bn(3))/((V_bk(3)+V_bn(3))/2))*100);
+
+
+fprintf(FID,...
+    '-1/4 Orbit          I:% 11.4f km/s% 11.4f km/s% 11.4f %%\r\n',...
+    V_ck(1),V_cn(1),abs((V_ck(1)-V_cn(1))/((V_ck(1)+V_cn(1))/2))*100);
+fprintf(FID,...
+    '                    J:% 11.4f km/s% 11.4f km/s% 11.4f %%\r\n',...
+    V_ck(2),V_cn(2),abs((V_ck(2)-V_cn(2))/((V_ck(2)+V_cn(2))/2))*100);
+fprintf(FID,...
+    '                    K:% 11.4f km/s% 11.4f km/s% 11.4f %%\r\n\r\n',...
+    V_ck(3),V_cn(3),abs((V_ck(3)-V_cn(3))/((V_ck(3)+V_cn(3))/2))*100);
+
+fprintf(FID,...
+    '-1 Orbit            I:% 11.4f km/s% 11.4f km/s% 11.4f %%\r\n',...
+    V_dk(1),V_dn(1),abs((V_dk(1)-V_dn(1))/((V_dk(1)+V_dn(1))/2))*100);
+fprintf(FID,...
+    '                    J:% 11.4f km/s% 11.4f km/s% 11.4f %%\r\n',...
+    V_dk(2),V_dn(2),abs((V_dk(2)-V_dn(2))/((V_dk(2)+V_dn(2))/2))*100);
+fprintf(FID,...
+    '                    K:% 11.4f km/s% 11.4f km/s% 11.4f %%\r\n\r\n',...
+    V_dk(3),V_dn(3),abs((V_dk(3)-V_dn(3))/((V_dk(3)+V_dn(3))/2))*100);
+
+
+fprintf(FID,'\r\n\r\nCOEs                       ');
+fprintf(FID,'Kepler       ');
+fprintf(FID,'Numerical      ');
+fprintf(FID,'Difference');
+fprintf(FID,'\r\n**************************************');
+fprintf(FID,'*************************************\r\n');
+
+fprintf(FID,...
+    '+1/4 Orbit          a:% 11.4f km  % 11.4f km  % 11.4f %%\r\n',...
+    a_ak,a_an, abs((a_ak-a_an)/((a_ak+a_an)/2))*100);
+fprintf(FID,...
+    '                    e:% 11.4f     % 11.4f     % 11.4f %%\r\n',...
+    e_ak,e_an,  abs((e_ak-e_an)/((e_ak+e_an)/2))*100);
+fprintf(FID,...
+    '                    i:% 11.4f deg % 11.4f deg % 11.4f deg\r\n',...
+    rad2deg(inc_ak),rad2deg(inc_an),(rad2deg(inc_ak)-rad2deg(inc_an)));
+fprintf(FID,...
+    '                 RAAN:% 11.4f deg % 11.4f deg % 11.4f deg\r\n',...
+    rad2deg(raan_ak),rad2deg(raan_an),(rad2deg(raan_ak)-rad2deg(raan_an)));
+fprintf(FID,...
+    '                 ArgP:% 11.4f deg % 11.4f deg % 11.4f deg\r\n',...
+    rad2deg(argp_ak),rad2deg(argp_an),(rad2deg(argp_ak)-rad2deg(argp_an)));
+fprintf(FID,...
+    '                   Nu:% 11.4f deg % 11.4f deg % 11.4f deg\r\n\r\n',...
+    rad2deg(nu_ak),rad2deg(nu_an),...
+    rad2deg(angdif(nu_ak,nu_an)));
+
+fprintf(FID,...
+    '+1 Orbit            a:% 11.4f km  % 11.4f km  % 11.4f %%\r\n',...
+    a_bk,a_bn, abs((a_bk-a_bn)/((a_bk+a_bn)/2))*100);
+fprintf(FID,...
+    '                    e:% 11.4f     % 11.4f     % 11.4f %%\r\n',...
+    e_bk,e_bn,  abs((e_bk-e_bn)/((e_bk+e_bn)/2))*100);
+fprintf(FID,...
+    '                    i:% 11.4f deg % 11.4f deg % 11.4f deg\r\n',...
+    rad2deg(inc_bk),rad2deg(inc_bn),...
+    rad2deg(angdif(inc_bk,inc_bn)));
+fprintf(FID,...
+    '                 RAAN:% 11.4f deg % 11.4f deg % 11.4f deg\r\n',...
+    rad2deg(raan_bk),rad2deg(raan_bn),...
+    rad2deg(angdif(raan_bk,raan_bn)));
+fprintf(FID,...
+    '                 ArgP:% 11.4f deg % 11.4f deg % 11.4f deg\r\n',...
+    rad2deg(argp_bk),rad2deg(argp_bn),...
+    rad2deg(angdif(argp_bk,argp_bn)));
+fprintf(FID,...
+    '                   Nu:% 11.4f deg % 11.4f deg % 11.4f deg\r\n\r\n',...
+    rad2deg(nu_bk),rad2deg(nu_bn),...
+    rad2deg(angdif(nu_bk,nu_bn)));
+
+fprintf(FID,...
+    '-1/4 Orbit          a:% 11.4f km  % 11.4f km  % 11.4f %%\r\n',...
+    a_ck,a_cn, abs((a_ck-a_cn)/((a_ck+a_cn)/2))*100);
+fprintf(FID,...
+    '                    e:% 11.4f     % 11.4f     % 11.4f %%\r\n',...
+    e_ck,e_cn,  abs((e_ck-e_cn)/((e_ck+e_cn)/2))*100);
+fprintf(FID,...
+    '                    i:% 11.4f deg % 11.4f deg % 11.4f deg\r\n',...
+    rad2deg(inc_ck),rad2deg(inc_cn),...
+    rad2deg(angdif(inc_ck,inc_cn)));
+fprintf(FID,...
+    '                 RAAN:% 11.4f deg % 11.4f deg % 11.4f deg\r\n',...
+    rad2deg(raan_ck),rad2deg(raan_cn),...
+    rad2deg(angdif(raan_ck,raan_cn)));
+fprintf(FID,...
+    '                 ArgP:% 11.4f deg % 11.4f deg % 11.4f deg\r\n',...
+    rad2deg(argp_ck),rad2deg(argp_cn),...
+    rad2deg(angdif(argp_ck,argp_cn)));
+fprintf(FID,...
+    '                   Nu:% 11.4f deg % 11.4f deg % 11.4f deg\r\n\r\n',...
+    rad2deg(nu_ck),rad2deg(nu_cn),...
+    rad2deg(angdif(nu_ck,nu_cn)));
+
+fprintf(FID,...
+    '-1 Orbit            a:% 11.4f km  % 11.4f km  % 11.4f %%\r\n',...
+    a_dk,a_dn, abs((a_dk-a_dn)/((a_dk+a_dn)/2))*100);
+fprintf(FID,...
+    '                    e:% 11.4f     % 11.4f     % 11.4f %%\r\n',...
+    e_dk,e_dn,  abs((e_dk-e_dn)/((e_dk+e_dn)/2))*100);
+fprintf(FID,...
+    '                    i:% 11.4f deg % 11.4f deg % 11.4f deg\r\n',...
+    rad2deg(inc_dk),rad2deg(inc_dn),...
+    rad2deg(angdif(inc_dk,inc_dn)));
+fprintf(FID,...
+    '                 RAAN:% 11.4f deg % 11.4f deg % 11.4f deg\r\n',...
+    rad2deg(raan_dk),rad2deg(raan_dn),...
+    rad2deg(angdif(raan_dk,raan_dn)));
+fprintf(FID,...
+    '                 ArgP:% 11.4f deg % 11.4f deg % 11.4f deg\r\n',...
+    rad2deg(argp_dk),rad2deg(argp_dn),...
+    rad2deg(angdif(argp_dk,argp_dn)));
+fprintf(FID,...
+    '                   Nu:% 11.4f deg % 11.4f deg % 11.4f deg\r\n\r\n',...
+    rad2deg(nu_dk),rad2deg(nu_dn),...
+    rad2deg(angdif(nu_dk,nu_dn)));
+
+fprintf(FID,'\r\n\r\nTime                       ');
+fprintf(FID,'Kepler       ');
+fprintf(FID,'Numerical      ');
+fprintf(FID,'Difference');
+fprintf(FID,'\r\n**************************************');
+fprintf(FID,'*************************************\r\n');
+
+fprintf(FID,...
+    '+1/4 Orbit           :% 11.4f s   % 11.4f s   % 11.4f %%\r\n',...
+    tofa,t_an,abs((tofa-t_an)/((tofa+t_an)/2))*100);
+fprintf(FID,...
+    '+1 Orbit             :% 11.4f s   % 11.4f s   % 11.4f %%\r\n',...
+    tofb,t_bn,abs((tofb-t_bn)/((tofb+t_bn)/2))*100);
+fprintf(FID,...
+    '-1/4 Orbit           :% 11.4f s   % 11.4f s   % 11.4f %%\r\n',...
+    tofc,t_cn,abs((tofc-t_cn)/((tofc+t_cn)/2))*100);
+fprintf(FID,...
+    '-1 Orbit             :% 11.4f s   % 11.4f s   % 11.4f %%\r\n',...
+    tofd,t_dn,abs((tofd-t_dn)/((tofd+t_dn)/2))*100);
+
+fclose(FID);
+toc

@@ -16,6 +16,6 @@ function xdot=attitude_dynamics(x,t,I,T)
 	xdot(5)=(I(2)-I(3))/I(1)*w(2)*w(3)+T(1)/I(1);
 	xdot(6)=(I(3)-I(1))/I(2)*w(3)*w(1)+T(2)/I(2);
 	xdot(7)=(I(1)-I(2))/I(3)*w(1)*w(2)+T(3)/I(3);
-	
+	xdot = xdot';
 
 end

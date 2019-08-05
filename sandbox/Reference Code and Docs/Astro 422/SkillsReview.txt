@@ -1,0 +1,51 @@
+ASTRO 422 
+Skills Review 
+Richard Phernetton 
+
+
+Inputs
+***************************************************************************
+Position:                       1200.0000 I km
+                                3250.0000 J km
+                               12650.0000 K km
+Velocity:                          2.6000 I km/s
+                                   5.6000 J km/s
+                                   0.0000 K km/s
+Year:                                2015     
+Month:                                  1     
+Day:                                   17     
+Hour:                                  12     
+Minute:                                 0     
+Second:                            0.0000     
+Site Lattitude:                    1.3364   rad
+                                  76.5703   deg
+Site Longitude:                   -1.1920   rad
+                                 -68.2992   deg
+Site Altitude:                     0.4247    km
+
+
+Outputs
+***************************************************************************
+Semimajor Axis:                17589.2562   km
+Inclination:                       1.5929   rad
+                                  91.2689   deg
+Eccentricity:                      0.3599   
+RAAN:                              4.2777   rad
+                                 245.0952   deg
+Argument of Perigee:               0.7502   rad
+                                  42.9818   deg
+True Anomoly:                      1.0870   rad
+                                  62.2829   deg
+Julian Date:                 2457040.0000      
+Global Sidereal Time:              5.1765   rad
+                                 296.5929   deg
+Local Sidereal Time:               3.9845   rad
+                                 228.2937   deg
+Site Position:                  -988.7534 I km
+                               -1109.5067 J km
+                                6182.2201 K km
+Range (rho):                    8101.1182   km
+Azimuth:                           6.0780   rad
+                                 348.2421   deg
+Elevation:                         0.6964   rad
+                                  39.9033   deg
