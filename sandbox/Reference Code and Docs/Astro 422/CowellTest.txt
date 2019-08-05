@@ -1,0 +1,52 @@
+ASTRO 422 
+Cowell 
+Richard Phernetton 
+
+
+Inputs
+***************************************************************************
+Semimajor Axis:      6627.270232   km
+Inclination:            0.903312   rad
+                       51.755979   deg
+Eccentricity:           0.015227   
+RAAN:                   2.427470   rad
+                      139.083780   deg
+Argument of Perigee:    2.372683   rad
+                      135.944725   deg
+True Anomoly:           0.064444   rad
+                        3.692375   deg
+Initial Position:    2044.270185 I km
+                    -5234.213571 J km
+                     3319.630055 K km
+Initial Velocity:       6.338852 I km/s
+                       -0.593050 J km/s
+                       -4.719229 K km/s
+Year:                       2015     
+Month:                         3     
+Day:                           1     
+Hour:                         12     
+Minute:                        0     
+Second:                 0.000000     
+
+
+Output
+***************************************************************************
+Semimajor Axis:      6674.932391   km
+Inclination:            0.902344   rad
+                       51.700511   deg
+Eccentricity:           0.019876   
+RAAN:                   2.426021   rad
+                      139.000742   deg
+Argument of Perigee:    2.103192   rad
+                      120.504053   deg
+True Anomoly:           0.340380   rad
+                       19.502316   deg
+Initial Position:    2075.420632 I km
+                    -5260.863529 J km
+                     3303.489144 K km
+Initial Velocity:       6.288345 I km/s
+                       -0.539547 J km/s
+                       -4.708218 K km/s
+
+Iteration Error:        0.000000   
+No. of iterations:        0.000000   
