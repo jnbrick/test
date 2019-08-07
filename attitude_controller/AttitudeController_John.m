@@ -32,17 +32,17 @@ tf=100;
 %c=(princ_moms_tru(1,1)-princ_moms_tru(2,2))/princ_moms_tru(3,3);
 
 dt=0.1;
-dyn=@(t,x) attitude_dynamics(x,t,princ_moms_tru,[0 0 0]');
+dyn=@(t,x) attitude_dynamics(x,t,[0 0 0]',princ_moms_tru);
 X0=[Q0,w0];
 
 options=odeset('AbsTol',1e-12,'RelTol',1e-12);
-[T,X]=ode45(dyn,[t0:dt:tf],X0,options);
+[T_array,X_array]=ode45(dyn,[t0:dt:tf],X0,options);
 
 %post process
-Q=X(:,1:4);
-W=X(:,5:7);
+Q=X_array(:,1:4);
+W=X_array(:,5:7);
 
-for i=1:size(X,1)
+for i=1:size(X_array,1)
 	H(i,:)=princ_moms_tru*W(i,:)';
 	H_mag(i)=norm(H(i,:));
 	T(i)=1/2*W(i,:)*princ_moms_tru*W(i,:)';
@@ -64,7 +64,7 @@ plot(H)
 %subplot(3,1,3)
 %plot(T)
 
-
+%build sim data
 
 
 

@@ -1,4 +1,4 @@
-function xdot=attitude_dynamics(x,t,I,T)
+function xdot=attitude_dynamics(x,t,T,I)
 	%attitude dynamics about principal axes
 	%keyboard
 	%state vector is 7 long
